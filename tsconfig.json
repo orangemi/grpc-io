@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "outDir": "lib",
+    "lib": ["es7"],
+    "target": "es6",
+    "rootDir": "src",
+    "declaration": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "sourceMap": true,
+  },
+  "include": [
+    "src/**/*.ts",
+  ]
+}
