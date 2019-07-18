@@ -12,9 +12,12 @@
   "dependencies": {
     "@grpc/grpc-js": "^0.5.2",
     "@grpc/proto-loader": "^0.5.1",
-    "grpc": "^1.22.2"
+    "google-protobuf": "^3.9.0",
+    "grpc": "^1.22.2",
+    "ts-protoc-gen": "^0.10.0"
   },
   "devDependencies": {
+    "@types/google-protobuf": "^3.7.1",
     "@types/mocha": "^5.2.7",
     "mocha": "^6.1.4",
     "protobufjs": "^6.8.8",
