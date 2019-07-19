@@ -29,7 +29,7 @@ const resp = await client.someRpcMethod({})
 TODO
 
 ## About generated code
-So far, this project does not use generated code for users and allow user to implement their interface to have some `friendly IDE intellegence`. But it is limited to have more `intellegence` in some case. For example, server side need to use `buildService()` promise to decide which request type the rpc method should be.
+So far, this project does not use generated code for users and allow user to implement their interface to have some `friendly IDE intelligence`. But it is limited to have more `intelligence` in some case. For example, server side need to use `buildService()` promise to decide which request type the rpc method should be.
 
 ## API
 TODO
