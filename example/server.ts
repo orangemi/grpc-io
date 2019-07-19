@@ -1,8 +1,8 @@
-import * as grpc from './grpc'
+import * as grpcIO from '../src/grpc'
 import * as RouteGuide from './route-guide'
 // debug
 async function main() {
-  const serverBuilder = await new grpc.ServerBuilder('protos/route-guide.proto', 'routeguide', 'RouteGuide')
+  const serverBuilder = await new grpcIO.ServerBuilder('protos/route-guide.proto', 'routeguide', 'RouteGuide')
     .buildService()
 
   const server = await serverBuilder

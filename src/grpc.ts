@@ -1,12 +1,14 @@
 import { Readable } from 'stream'
-// import * as grpc from '@grpc/grpc-js'
 import * as grpc from 'grpc'
 import * as protoLoader from "@grpc/proto-loader"
-import { ServiceClient } from '@grpc/grpc-js/build/src/make-client'
 
 export interface ServiceClientConstructor<T = any> {
   new(address: string, credentials: grpc.ChannelCredentials, options?: any): ServiceClient
   service: grpc.ServiceDefinition<T>
+}
+
+interface ServiceClient {
+  [x: string]: Function
 }
 
 export interface RequestOptions {

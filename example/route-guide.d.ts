@@ -1,4 +1,4 @@
-import * as grpc from './grpc'
+import * as grpc from '../src/grpc'
 
 export interface Point {
   longitude?: number
@@ -24,7 +24,7 @@ export interface RouteNote {
   message?: string
 }
 
-export interface RouteGuideClient {
+export interface RouteGuideService {
   GetFeature: grpc.UnaryUnaryRequest<Point, Feature>
   ListFeatures: grpc.UnaryStreamRequest<Rectangle, Feature>
   RecordRoute: grpc.StreamUnaryRequest<Point, RouteSummary>
