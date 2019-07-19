@@ -1,36 +1,51 @@
-import * as grpc from '@grpc/grpc-js'
-// import * as grpc from 'grpc'
+import { Readable } from 'stream'
+// import * as grpc from '@grpc/grpc-js'
+import * as grpc from 'grpc'
 import * as protoLoader from "@grpc/proto-loader"
-import { ServiceClientConstructor, ServiceClient } from '@grpc/grpc-js/build/src/make-client'
+import { ServiceClient } from '@grpc/grpc-js/build/src/make-client'
+
+export interface ServiceClientConstructor<T = any> {
+  new(address: string, credentials: grpc.ChannelCredentials, options?: any): ServiceClient
+  service: grpc.ServiceDefinition<T>
+}
 
 export interface RequestOptions {
 }
 
 export interface Stream<T = any> {
   next(): Promise<T>
-  cancel(): any
+  emitError?(error: Error): any
+  cancel?(): any
 }
 
 export class StreamReader<T> implements Stream<T> {
-  call: any
+  call: Readable
   isEnded = false
-  error = null
+  error: Error = null
 
   get request() { return this.call }
 
-  constructor(call) {
+  constructor(call: Readable) {
     this.call = call
     this.call.once('end', () => { this.isEnded = true })
-    this.call.once('error', (error) => {
+    this.call.once('error', (error: Error) => {
       this.isEnded = true
       this.error = error
     })
   }
 
+  emitError(error: Error) {
+    if (!this.error) this.error = error
+  }
+
   async next(): Promise<T> {
     if (this.error) throw this.error
     if (this.isEnded) return null
-    const result: T = await new Promise(resolve => this.call.once('data', resolve))
+    const result: T = await Promise.race<any>([
+      new Promise(resolve => this.call.once('data', resolve)),
+      new Promise((_, reject) => this.call.once('error', reject)),
+      new Promise(resolve => this.call.once('end', () => resolve(null))),
+    ])
     return result
   }
   cancel() {
@@ -52,45 +67,71 @@ export interface StreamStreamRequest<ReqT = any, RespT = any> {
   (req: Stream<ReqT>, options?: RequestOptions): Promise<Stream<RespT>>
 }
 
-type GrpcRequestHandler = UnaryUnaryRequest | UnaryStreamRequest | StreamUnaryRequest | StreamStreamRequest
+type MethodType = 'uu' | 'us' | 'su' | 'ss' | string
 
-export class GrpcServerBuilder {
+type RequestHandler = UnaryUnaryRequest | UnaryStreamRequest | StreamUnaryRequest | StreamStreamRequest
+
+export class ServerBuilder {
   private serviceImplObj: any = {}
   private protoFilePath: string
   private packageName: string
   private serviceName: string
+  private Service: ServiceClientConstructor
 
-  service(protofilePath: string, packageName: string, serviceName: string) {
+  constructor(protofilePath: string, packageName: string, serviceName: string) {
     this.protoFilePath = protofilePath
     this.packageName = packageName
     this.serviceName = serviceName
+  }
+
+  public async buildService() {
+    if (this.Service) return
+    const protofile = await protoLoader.load(this.protoFilePath)
+    const pkgDef = grpc.loadPackageDefinition(protofile)
+    this.Service = pkgDef[this.packageName][this.serviceName]
     return this
   }
 
-  private async buildService() {
-    const protofile = await protoLoader.load(this.protoFilePath)
-    const pkgDef = grpc.loadPackageDefinition(protofile)
-    const Service = pkgDef[this.packageName][this.serviceName] as ServiceClientConstructor
-    return Service
+  async build() {
+    await this.buildService()
+    const server = new grpc.Server()
+    server.addService(this.Service.service, this.serviceImplObj)
+    return new Server(server)
   }
 
-  async build() {
-    const Service = await this.buildService()
-    const server = new grpc.Server()
-    server.addService(Service.service, this.serviceImplObj)
-    return new GrpcServer(server)
+  private getMethodType(methodName: string): MethodType {
+    let result: string[] = []
+    if (this.Service) {
+      const methodDef = this.Service.service[methodName]
+      if (!methodDef) throw new Error('no method definition for ' + methodName)
+      result.push(methodDef.requestStream ? 's' : 'u')
+      result.push(methodDef.responseStream ? 's' : 'u')
+    }
+    return result.join('')
   }
 
   uu<ReqT = any, RespT = any>(methodName: string, fn: UnaryUnaryRequest<ReqT, RespT>) {
+    if (this.getMethodType(methodName) && this.getMethodType(methodName) !== 'uu') {
+      throw new Error(`Method '${methodName}' is not an 'UnaryUnaryRequest'`)
+    }
     return this.add(methodName, this.wrapUU(fn))
   }
   us<ReqT = any, RespT = any>(methodName: string, fn: UnaryStreamRequest<ReqT, RespT>) {
+    if (this.getMethodType(methodName) && this.getMethodType(methodName) !== 'us') {
+      throw new Error(`Method '${methodName}' is not an 'UnaryStreamRequest'`)
+    }
     return this.add(methodName, this.wrapUS(fn))
   }
   su<ReqT = any, RespT = any>(methodName: string, fn: StreamUnaryRequest<ReqT, RespT>) {
+    if (this.getMethodType(methodName) && this.getMethodType(methodName) !== 'su') {
+      throw new Error(`Method '${methodName}' is not an 'StreamUnaryRequest'`)
+    }
     return this.add(methodName, this.wrapSU(fn))
   }
   ss<ReqT = any, RespT = any>(methodName: string, fn: StreamStreamRequest<ReqT, RespT>) {
+    if (this.getMethodType(methodName) && this.getMethodType(methodName) !== 'ss') {
+      throw new Error(`Method '${methodName}' is not an 'SreamStreamRequest'`)
+    }
     return this.add(methodName, this.wrapSS(fn))
   }
   
@@ -152,7 +193,7 @@ export class GrpcServerBuilder {
   }
 }
 
-export class GrpcServer {
+export class Server {
   private server: grpc.Server
   constructor(server: grpc.Server) {
     this.server = server
@@ -181,7 +222,7 @@ export class GrpcServer {
   }
 }
 
-export class GrpcClient {
+export class ClientBuilder {
   addr: string
   credentials: grpc.ChannelCredentials
   serviceClient: ServiceClient
@@ -205,15 +246,15 @@ export class GrpcClient {
       } else if (!serviceDef.requestStream && serviceDef.responseStream) {
         client[methodName] = this.wrapUnaryStreamRequest(methodName)
       } else if (serviceDef.requestStream && !serviceDef.responseStream) {
-        client[methodName] = this.wrapUnaryUnaryRequest(methodName)
+        client[methodName] = this.wrapStreamUnaryRequest(methodName)
       } else if (serviceDef.requestStream && serviceDef.responseStream) {
-        client[methodName] = this.wrapUnaryUnaryRequest(methodName)
+        client[methodName] = this.wrapStreamStreamRequest(methodName)
       }
     })
     return client as T
   }
 
-  wrapUnaryUnaryRequest<ReqT = any, RespT = any>(method: string): UnaryUnaryRequest<ReqT, RespT> {
+  private wrapUnaryUnaryRequest<ReqT = any, RespT = any>(method: string): UnaryUnaryRequest<ReqT, RespT> {
     const serviceClient = this.serviceClient
     return function uuRequest(req: ReqT, meta?: grpc.Metadata, options?: grpc.CallOptions) {
       const args = arguments
@@ -223,85 +264,59 @@ export class GrpcClient {
     }
   }
 
-  wrapUnaryStreamRequest<ReqT = any, RespT = any>(method: string): UnaryStreamRequest<ReqT, RespT> {
+  private wrapUnaryStreamRequest<ReqT = any, RespT = any>(method: string): UnaryStreamRequest<ReqT, RespT> {
     const serviceClient = this.serviceClient
-    return function usRequst(req: ReqT, meta?: grpc.Metadata, options?: grpc.CallOptions) {
+    return async function usRequst(req: ReqT, meta?: grpc.Metadata, options?: grpc.CallOptions) {
       const args = arguments
-      return new Promise((resolve, reject) => {
-        const resp = serviceClient[method](...args)
-        resp.on('error', e => console.error('resp err', e))
-        resp.on('status', s => console.error('resp status', s))
-        const reader = new StreamReader<RespT>(resp)
-        return resolve(reader)
+      // return new Promise((resolve, reject) => {
+      const call = serviceClient[method](...args)
+      const reader = new StreamReader<RespT>(call)
+      return reader
+        // return resolve(reader)
+      // })
+    }
+  }
+
+  private wrapStreamUnaryRequest<ReqT = any, RespT = any>(method: string): StreamUnaryRequest<ReqT, RespT> {
+    const serviceClient = this.serviceClient
+    return function suRequst(reader: Stream<ReqT>, meta?: grpc.Metadata, options?: grpc.CallOptions) {
+      const args: any[] = Array.prototype.slice.call(arguments)
+      args.shift()
+      return new Promise(async (resolve, reject) => {
+        const call = serviceClient[method](...args, (err, resp) => err ? reject(err) : resolve(resp))
+        while (true) {
+          const obj = await reader.next()
+          if (!obj) break
+          call.write(obj)
+        }
+        call.end()
       })
     }
   }
+
+  private wrapStreamStreamRequest<ReqT = any, RespT = any>(method: string): StreamStreamRequest<ReqT, RespT> {
+    const serviceClient = this.serviceClient
+    return async function ssRequst(reader: Stream<ReqT>, meta?: grpc.Metadata, options?: grpc.CallOptions) {
+      const args: any[] = Array.prototype.slice.call(arguments)
+      args.shift()
+      const call = serviceClient[method](...args)
+      // return new Promise(async (resolve, reject) => {
+      // call.on('error', e => console.error('resp err', e))
+      // call.on('status', s => console.error('resp status', s))
+      const respReader = new StreamReader<RespT>(call)
+
+      new Promise(async (resolve, reject) => {
+        while (true) {
+          const obj = await reader.next()
+          if (!obj) break
+          call.write(obj)
+        }
+        call.end()
+      }).catch(e => {
+        respReader.emitError(e)
+      })
+
+      return respReader
+    }
+  }
 }
-
-export class ServiceImplBuilder {
-  methods: {[x: string]: GrpcRequestHandler} = {}
-  uu<ReqT = any, RespT = any>(methodName: string, fn: UnaryUnaryRequest<ReqT, RespT>) {
-    return this.add(methodName, fn)
-  }
-  us<ReqT = any, RespT = any>(methodName: string, fn: UnaryUnaryRequest<ReqT, RespT>) {
-    return this.add(methodName, fn)
-  }
-  su<ReqT = any, RespT = any>(methodName: string, fn: UnaryUnaryRequest<ReqT, RespT>) {
-    return this.add(methodName, fn)
-  }
-  ss<ReqT = any, RespT = any>(methodName: string, fn: UnaryUnaryRequest<ReqT, RespT>) {
-    return this.add(methodName, fn)
-  }
-  private add(methodName: string, fn: GrpcRequestHandler) {
-    this.methods[methodName] = fn
-  }
-  build(): {[x: string]: GrpcRequestHandler} {
-    return Object.assign({}, this.methods)
-  }
-}
-
-// debug
-async function main() {
-  const server = await new GrpcServerBuilder()
-    .service('protos/route-guide.proto', 'routeguide', 'RouteGuide')
-    .uu('GetFeature', async (req) => {
-      return {name: "hello world"}
-    })
-    .us('ListFeatures', async (req) => {
-      // await new Promise(resolve => setTimeout(resolve, 2000))
-      let t = 5
-      return {
-        async next() {
-          if (t-- <= 0) return null
-          // await new Promise(resolve => setTimeout(resolve, 500))
-          return {name: 't ' + t}
-        },
-        cancel() {}
-      }
-    })
-    .su('Chat', async (reader) => {
-      const t = await reader.next()
-    })
-    .build()
-  // await server.use(, new RouteGuideServiceImpl() as any)
-  const p = await server.listen('127.0.0.1:5009')
-
-  const clientBuilder = new GrpcClient('127.0.0.1:5009')
-  const client = await clientBuilder.build('protos/route-guide.proto', 'routeguide', 'RouteGuide')
-  const point = {latitude: 409146138, longitude: -746188906};
-
-  const resp1 = await client.GetFeature(point)
-  console.log('resp1', resp1)
-
-  const resp2: Stream = await client.ListFeatures({})
-  while (true) {
-    const t = await resp2.next()
-    if (!t) break
-    console.log('resp', t)
-  }
-  await server.close(true)
-}
-
-main().catch(e => {
-  console.error(e.message, e)
-})
