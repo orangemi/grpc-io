@@ -1,6 +1,6 @@
 import 'mocha'
 import {strict as assert} from 'assert'
-import * as grpcIO from '../src/grpc'
+import * as grpcIO from '../src/grpc-io'
 import * as path from 'path'
 import * as grpc from 'grpc'
 import * as protoLoader from '@grpc/proto-loader'

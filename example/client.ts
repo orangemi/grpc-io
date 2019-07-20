@@ -1,4 +1,4 @@
-import * as grpcIO from '../src/grpc'
+import * as grpcIO from '../src/grpc-io'
 import * as RouteGuide from './route-guide'
 
 // debug

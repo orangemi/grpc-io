@@ -1,13 +1,25 @@
 {
   "name": "@imxiaomi/grpc-io",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "description": "",
-  "main": "index.js",
+  "main": "lib/grpc-io.js",
   "scripts": {
     "build": "tsc",
+    "prepublish": "npm run build",
     "test": "mocha -r ts-node/register test/*.test.ts --exit"
   },
-  "author": "",
+  "author": {
+    "name": "Orange Mi",
+    "email": "orangemiwj@gamil.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orangemi/grpc-io.git"
+  },
+  "homepage": "https://github.com/orangemi/grpc-io#readme",
+  "bugs": {
+    "url" : "https://github.com/orangemi/grpc-io/issues"
+  },
   "license": "ISC",
   "dependencies": {
     "@grpc/proto-loader": "^0.5.1",
