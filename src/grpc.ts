@@ -73,6 +73,12 @@ type MethodType = 'uu' | 'us' | 'su' | 'ss' | string
 
 type RequestHandler = UnaryUnaryRequest | UnaryStreamRequest | StreamUnaryRequest | StreamStreamRequest
 
+export async function getService(protoFilePath: string, packageName: string, serviceName: string): Promise<ServiceClientConstructor> {
+  const protofile = await protoLoader.load(protoFilePath)
+  const pkgDef = grpc.loadPackageDefinition(protofile)
+  return pkgDef[packageName][serviceName]
+} 
+
 export class ServerBuilder {
   private serviceImplObj: any = {}
   private protoFilePath: string
@@ -87,10 +93,9 @@ export class ServerBuilder {
   }
 
   public async buildService() {
-    if (this.Service) return
-    const protofile = await protoLoader.load(this.protoFilePath)
-    const pkgDef = grpc.loadPackageDefinition(protofile)
-    this.Service = pkgDef[this.packageName][this.serviceName]
+    if (!this.Service) {
+      this.Service = await getService(this.protoFilePath, this.packageName, this.serviceName)
+    }
     return this
   }
 
@@ -228,6 +233,7 @@ export class ClientBuilder {
   addr: string
   credentials: grpc.ChannelCredentials
   serviceClient: ServiceClient
+  Service: ServiceClientConstructor
 
   constructor(addr: string, credentials: grpc.ChannelCredentials = grpc.credentials.createInsecure()) {
     this.addr = addr
@@ -235,14 +241,13 @@ export class ClientBuilder {
   }
 
   async build<T = any>(protofilePath, packageName, serviceName) {
-    const protofile = await protoLoader.load(protofilePath)
-    const pkgDef = grpc.loadPackageDefinition(protofile)
-    const Service = pkgDef[packageName][serviceName] as ServiceClientConstructor
-
-    this.serviceClient = new Service(this.addr, this.credentials)
+    if (!this.Service) {
+      const Service = this.Service = await getService(protofilePath, packageName, serviceName)
+      this.serviceClient = new Service(this.addr, this.credentials)
+    }
     const client: any = {}
-    Object.keys(Service.service).forEach(methodName => {
-      const serviceDef = Service.service[methodName]
+    Object.keys(this.Service.service).forEach(methodName => {
+      const serviceDef = this.Service.service[methodName]
       if (!serviceDef.requestStream && !serviceDef.responseStream) {
         client[methodName] = this.wrapUnaryUnaryRequest(methodName)
       } else if (!serviceDef.requestStream && serviceDef.responseStream) {
