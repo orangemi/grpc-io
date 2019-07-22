@@ -1,10 +1,11 @@
 import * as grpcIO from '../src/grpc-io'
 import * as RouteGuide from './route-guide'
 
-// debug
+const protoFilePath = __dirname + '/protos/route-guide.proto'
+
 async function main() {
   const client = await new grpcIO.ClientBuilder('127.0.0.1:5009')
-    .build<RouteGuide.RouteGuideService>('protos/route-guide.proto', 'routeguide', 'RouteGuide')
+    .build<RouteGuide.RouteGuideService>(protoFilePath, 'routeguide', 'RouteGuide')
 
   console.log('request 1')
   const resp1 = await client.GetFeature({latitude: 409146138, longitude: -746188906})

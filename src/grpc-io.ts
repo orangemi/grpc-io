@@ -151,22 +151,21 @@ export class ServerBuilder {
       fn(call.request).then(data => {
         callback(null, data)
       }, err => {
-        callback(err, null)
+        callback(err)
       })
     }
   }
   private wrapUS(fn: UnaryStreamRequest<any, any>) {
     return function (call) {
       fn(call.request).then(async resp => {
-        try {
-          while (true) {
-            const result = await resp.next()
-            if (result) call.write(result)
-            else break
-          }
-        } catch (e) {
-          console.error(e)
+        while (true) {
+          const result = await resp.next()
+          if (result) call.write(result)
+          else break
         }
+      }).catch(e => {
+        call.emit('error', e)
+      }).finally(() => {
         call.end()
       })
     }
@@ -185,15 +184,14 @@ export class ServerBuilder {
     return function (call) {
       const reader = new StreamReader(call)
       fn(reader).then(async resp => {
-        try {
-          while (true) {
-            const result = await resp.next()
-            if (result) call.write(result)
-            else break
-          }
-        } catch (e) {
-          console.error(e)
+        while (true) {
+          const result = await resp.next()
+          if (result) call.write(result)
+          else break
         }
+      }).catch(err => {
+        call.emit('error', err)
+      }).finally(() => {
         call.end()
       })
     }

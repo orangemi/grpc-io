@@ -1,12 +1,16 @@
 import * as grpcIO from '../src/grpc-io'
 import * as RouteGuide from './route-guide'
-// debug
+
+const protoFilePath = __dirname + '/protos/route-guide.proto'
+
 async function main() {
-  const serverBuilder = await new grpcIO.ServerBuilder('protos/route-guide.proto', 'routeguide', 'RouteGuide')
+  const serverBuilder = await new grpcIO.ServerBuilder(protoFilePath, 'routeguide', 'RouteGuide')
     .buildService()
 
   const server = await serverBuilder
     .uu<RouteGuide.Point, RouteGuide.Feature>('GetFeature', async (req) => {
+      // let e: any = new Error('something error')
+      // throw e
       return {name: "hello world"}
     })
     .us<RouteGuide.Rectangle, RouteGuide.Feature>('ListFeatures', async (req) => {
