@@ -1,6 +1,6 @@
 {
   "name": "@imxiaomi/grpc-io",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "description": "",
   "main": "lib/grpc-io.js",
   "scripts": {

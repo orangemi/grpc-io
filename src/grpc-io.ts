@@ -158,6 +158,7 @@ export class ServerBuilder {
   private wrapUS(fn: UnaryStreamRequest<any, any>) {
     return function (call) {
       fn(call.request).then(async resp => {
+        call.once('cancelled', () => {throw new Error('caller cancelled')})
         while (true) {
           const result = await resp.next()
           if (result) call.write(result)
@@ -184,6 +185,7 @@ export class ServerBuilder {
     return function (call) {
       const reader = new StreamReader(call)
       fn(reader).then(async resp => {
+        call.once('cancelled', () => {throw new Error('caller cancelled')})
         while (true) {
           const result = await resp.next()
           if (result) call.write(result)
