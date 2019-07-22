@@ -25,7 +25,7 @@ describe('grpc.serverBuilder', () => {
       grpcClient = new protoDef.routeguide.RouteGuide(addr, grpc.credentials.createInsecure())
     })
     afterEach(() => {
-      // grpcClient.close()
+      grpcClient.close()
     })
     it('builder.uu', async () => {
       const builder = new grpcIO.ServerBuilder(grpcFilePath, 'routeguide', 'RouteGuide')

@@ -1,5 +1,6 @@
 import * as grpcIO from '../src/grpc-io'
 import * as RouteGuide from './route-guide'
+import { Readable, Transform } from 'stream';
 
 const protoFilePath = __dirname + '/protos/route-guide.proto'
 
@@ -15,33 +16,29 @@ async function main() {
     })
     .us<RouteGuide.Rectangle, RouteGuide.Feature>('ListFeatures', async (req) => {
       let t = 5
-      return {
-        async next() {
+      return new Readable({
+        objectMode: true,
+        read: () => {
           if (t-- <= 0) return null
           return {name: 't ' + t}
         }
-      }
+      })
     })
     .su<RouteGuide.Point, RouteGuide.RouteSummary>('RecordRoute', async (reader) => {
       let count = 0
-      while (true) {
-        const t = await reader.next()
-        if (!t) break
+      for await (const t of reader) {
         count++
       }
       return {feature_count: count}
     })
     .ss<RouteGuide.RouteNote, RouteGuide.RouteNote>('RouteChat', async (reader) => {
-      return {
-        async next() {
-          const message = await reader.next()
-          if (message) {
-            return {message: message.message + ' server', location: message.location}
-          } else {
-            return null
-          }
+      let count = 0
+      return reader.pipe(new Transform({
+        objectMode: true,
+        transform: (c, encoding, callback) => {
+          callback(null, c)
         }
-      }
+      }))
     })
     .build()
   // await server.use(, new RouteGuideServiceImpl() as any)
