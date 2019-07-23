@@ -10,20 +10,6 @@ async function delay(timeout: number) {
   return new Promise(resolve => setTimeout(resolve, timeout))
 }
 
-function format(...args: any[]) {
-  return args.map(k => `[${k}]`).join(' ')
-}
-
-// class ConsoleReporter extends grpcIO.Reporter {
-//   report(log: grpcIO.Log) {
-//     if (log.reported) return
-//     console.log(format(log.end.toISOString(), log.level, process.pid, log.remote, log.methodDef.path, (log.end.getTime() - log.start.getTime()) + 'ms'))
-//     if (log.error) {
-//       console.error(log.error)
-//     }
-//   }
-// }
-
 describe('grpc.serverBuilder', () => {
   const grpcFilePath = path.resolve(__dirname, './protos/route-guide.proto')
   it('new builder', () => {
