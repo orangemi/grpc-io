@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/orangemi/grpc-io#readme",
   "bugs": {
-    "url" : "https://github.com/orangemi/grpc-io/issues"
+    "url": "https://github.com/orangemi/grpc-io/issues"
   },
   "license": "ISC",
   "dependencies": {
@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^5.2.7",
+    "google-protobuf": "^3.9.0",
     "mocha": "^6.1.4",
     "ts-node": "^8.3.0",
     "typescript": "^3.5.3"
