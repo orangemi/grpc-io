@@ -10,7 +10,7 @@
   },
   "author": {
     "name": "Orange Mi",
-    "email": "orangemiwj@gamil.com"
+    "email": "orangemiwj@gmail.com"
   },
   "repository": {
     "type": "git",
@@ -23,8 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "@grpc/grpc-js": "^1.0.4",
-    "@grpc/proto-loader": "^0.5.4",
-    "mz": "^2.7.0"
+    "@grpc/proto-loader": "^0.5.4"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",

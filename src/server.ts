@@ -1,4 +1,5 @@
 import { promisify } from 'util'
+import { strict as assert } from 'assert'
 import { Readable, PassThrough, pipeline } from 'stream'
 import * as grpc from '@grpc/grpc-js'
 import { ChannelOptions } from '@grpc/grpc-js/build/src/channel-options'
@@ -8,13 +9,20 @@ const pipelinePromise = promisify(pipeline)
 // grpc not export handleClientStreamingCall function
 type handleClientStreamingCall<RequestType, ResponseType> = (call: grpc.ServerReadableStream<RequestType, ResponseType>, callback: grpc.sendUnaryData<ResponseType>) => void
 
-export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectImpl: any, serverOptions?: ChannelOptions) {
+export function createServer(serviceDef: grpc.ServiceDefinition, serviceImpl: any, serverOptions?: ChannelOptions) {
+  assert.ok(serviceImpl, new Error(`service is not implemented?`))
+
   const serviceObj = {}
   for (const method in serviceDef) {
     const methodDef = serviceDef[method]
+    const methodImpl: Function = serviceImpl[method]
+
+    assert.ok(methodImpl, new Error(`method '${method}' is not implemented in service`))
+    assert.equal(typeof methodImpl, 'function', new Error(`method '${method}' is not a function in service`))
+
     if (!methodDef.requestStream && !methodDef.responseStream) {
-      const methodImpl: grpc.handleUnaryCall<any, any> = function handleUnaryCall(call, callback) {
-        serviceObjectImpl[method](call.request, call)
+      const handler: grpc.handleUnaryCall<any, any> = function handleUnaryCall(call, callback) {
+        methodImpl.call(serviceImpl, call.request, call)
         .then(result => {
           callback(null, result)
         })
@@ -22,10 +30,10 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectIm
           callback(err, null)
         })
       }
-      Object.assign(serviceObj, { [method]: methodImpl })
+      Object.assign(serviceObj, { [method]: handler })
     } else if (!methodDef.requestStream && methodDef.responseStream) {
-      const methodImpl: grpc.handleServerStreamingCall<any, any> = function handleServerStreamingCall(call) {
-        serviceObjectImpl[method](call.request)
+      const handler: grpc.handleServerStreamingCall<any, any> = function handleServerStreamingCall(call) {
+        methodImpl.call(serviceImpl, call.request)
         .then((result: Readable) => {
           return pipelinePromise(result, call)
         })
@@ -33,10 +41,10 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectIm
           call.emit('error', err)
         })
       }
-      Object.assign(serviceObj, { [method]: methodImpl })
+      Object.assign(serviceObj, { [method]: handler })
     } else if (methodDef.requestStream && !methodDef.responseStream) {
-      const methodImpl: handleClientStreamingCall<any, any> = function handleClientStreamingCall(call, callback) {
-        serviceObjectImpl[method](call.pipe(new PassThrough()), call)
+      const handler: handleClientStreamingCall<any, any> = function handleClientStreamingCall(call, callback) {
+        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call)
         .then((result: any) => {
           callback(null, result)
         })
@@ -44,10 +52,10 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectIm
           callback(err, null)
         })
       }
-      Object.assign(serviceObj, { [method]: methodImpl })
+      Object.assign(serviceObj, { [method]: handler })
     } else if (methodDef.requestStream && methodDef.responseStream) {
-      const methodImpl: grpc.handleBidiStreamingCall<any, any> = function handleBidiStreamingCall(call) {
-        serviceObjectImpl[method](call.pipe(new PassThrough()), call)
+      const handler: grpc.handleBidiStreamingCall<any, any> = function handleBidiStreamingCall(call) {
+        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call)
         .then((result: Readable) => {
           return pipelinePromise(result, call)
         })
@@ -55,7 +63,7 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectIm
           call.emit('error', err)
         })
       }
-      Object.assign(serviceObj, { [method]: methodImpl })
+      Object.assign(serviceObj, { [method]: handler })
     }
   }
 
@@ -63,4 +71,3 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceObjectIm
   server.addService(serviceDef, serviceObj)
   return server
 }
-
