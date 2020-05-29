@@ -9,9 +9,7 @@ const pipelinePromise = promisify(pipeline)
 // grpc not export handleClientStreamingCall function
 type handleClientStreamingCall<RequestType, ResponseType> = (call: grpc.ServerReadableStream<RequestType, ResponseType>, callback: grpc.sendUnaryData<ResponseType>) => void
 
-export function createServer(serviceDef: grpc.ServiceDefinition, serviceImpl: any, serverOptions?: ChannelOptions) {
-  assert.ok(serviceImpl, new Error(`service is not implemented?`))
-
+export function createServiceObj(serviceDef: grpc.ServiceDefinition, serviceImpl: any) {
   const serviceObj = {}
   for (const method in serviceDef) {
     const methodDef = serviceDef[method]
@@ -67,7 +65,13 @@ export function createServer(serviceDef: grpc.ServiceDefinition, serviceImpl: an
     }
   }
 
+  return serviceObj
+}
+
+export function createServer(serviceDef: grpc.ServiceDefinition, serviceImpl: any, serverOptions?: ChannelOptions) {
+  assert.ok(serviceImpl, new Error(`service is not implemented?`))
+
   const server = new grpc.Server(serverOptions)
-  server.addService(serviceDef, serviceObj)
+  server.addService(serviceDef, createServiceObj(serviceDef, serviceImpl))
   return server
 }
