@@ -6,7 +6,7 @@ import { Z_PARTIAL_FLUSH } from 'mz/zlib'
 
 const pipelinePromise = promisify(pipeline)
 
-export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: string, credentials: grpc.ChannelCredentials) {
+export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: string, credentials: grpc.ChannelCredentials): any {
   const result = {}
   const client = new grpc.Client(serverAddr, credentials)
   for (const method in serviceDef) {
@@ -18,9 +18,10 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
           methodDef.requestSerialize,
           methodDef.responseDeserialize,
           request,
-          metaData,
-          callOptions,
+          metaData || new grpc.Metadata(),
+          callOptions || {},
           (err, result) => {
+            console.log('-unary result-', err, result)
             if (err) return Promise.reject(err)
             return Promise.resolve(result)
           },
@@ -32,8 +33,8 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
           methodDef.path,
           methodDef.requestSerialize,
           methodDef.responseDeserialize,
-          metaData,
-          callOptions,
+          metaData || new grpc.Metadata(),
+          callOptions || {},
           (err, result) => {
             if (err) return Promise.reject(err)
             return Promise.resolve(result)
@@ -47,8 +48,8 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
           methodDef.requestSerialize,
           methodDef.responseDeserialize,
           request,
-          metaData,
-          callOptions
+          metaData || new grpc.Metadata(),
+          callOptions || {},
         )
       }
     } else if (methodDef.requestStream && methodDef.responseStream) {
@@ -57,13 +58,13 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
           methodDef.path,
           methodDef.requestSerialize,
           methodDef.responseDeserialize,
-          metaData,
-          callOptions,
+          metaData || new grpc.Metadata(),
+          callOptions || {},
         ))
       }
     }
   }
-  return client
+  return result
 }
 
 // var routeguide = grpc.loadPackageDefinition(packageDef).routeguide;

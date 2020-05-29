@@ -1,6 +1,7 @@
 import 'mocha'
 import { strict as assert } from 'assert'
 import { createServer } from '../src/server'
+import { createClient } from '../src/client'
 import * as path from 'path'
 import * as protoLoader from '@grpc/proto-loader'
 import * as grpc from '@grpc/grpc-js'
@@ -16,7 +17,10 @@ describe('server', () => {
 
   it('server.createServer', async () => {
     const server = createServer(serviceDef, {
-      async GetFeature() { return {} },
+      async GetFeature() {
+        console.log('client request GetFeature')
+        return {}
+      },
       async ListFeatures() {},
       async RecordRoute() {},
       async RouteChat() {},
@@ -31,16 +35,21 @@ describe('server', () => {
     console.log('server started')
     console.log('client connect')
 
-    var routeguide = grpc.loadPackageDefinition(packageDef).routeguide;
-    var client = new routeguide['RouteGuide']('127.0.0.1:5443', grpc.credentials.createInsecure());
-    
+    const client = createClient(serviceDef, '127.0.0.1:5443', grpc.ChannelCredentials.createInsecure())
     console.log('client connected')
-    // console.log('client.GetFeature', client.GetFeature)
+    const result = await client.GetFeature({})
+    console.log('==== last ====', result)
 
-    const result = await new Promise((resolve, reject) => client.GetFeature({latitude: 1, longitude: 2}, (err, result) => {
-      if (err) return reject(err)
-      return resolve(result)
-    }))
-    console.log(result)
+    // var routeguide = grpc.loadPackageDefinition(packageDef).routeguide;
+    // var client = new routeguide['RouteGuide']('127.0.0.1:5443', grpc.credentials.createInsecure());
+    
+    // console.log('client connected')
+    // // console.log('client.GetFeature', client.GetFeature)
+
+    // const result = await new Promise((resolve, reject) => client.GetFeature({latitude: 1, longitude: 2}, (err, result) => {
+    //   if (err) return reject(err)
+    //   return resolve(result)
+    // }))
+    // console.log(result)
   })
 })
