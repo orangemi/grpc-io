@@ -20,7 +20,7 @@ export function createServiceObj(serviceDef: grpc.ServiceDefinition, serviceImpl
 
     if (!methodDef.requestStream && !methodDef.responseStream) {
       const handler: grpc.handleUnaryCall<any, any> = function handleUnaryCall(call, callback) {
-        methodImpl.call(serviceImpl, call.request, call)
+        methodImpl.call(serviceImpl, call.request, call.metadata, call)
         .then(result => {
           callback(null, result)
         })
@@ -31,7 +31,7 @@ export function createServiceObj(serviceDef: grpc.ServiceDefinition, serviceImpl
       Object.assign(serviceObj, { [method]: handler })
     } else if (!methodDef.requestStream && methodDef.responseStream) {
       const handler: grpc.handleServerStreamingCall<any, any> = function handleServerStreamingCall(call) {
-        methodImpl.call(serviceImpl, call.request)
+        methodImpl.call(serviceImpl, call.request, call.metadata, call)
         .then((result: Readable) => {
           return pipelinePromise(result, call)
         })
@@ -42,7 +42,7 @@ export function createServiceObj(serviceDef: grpc.ServiceDefinition, serviceImpl
       Object.assign(serviceObj, { [method]: handler })
     } else if (methodDef.requestStream && !methodDef.responseStream) {
       const handler: handleClientStreamingCall<any, any> = function handleClientStreamingCall(call, callback) {
-        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call)
+        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call.metadata, call)
         .then((result: any) => {
           callback(null, result)
         })
@@ -53,7 +53,7 @@ export function createServiceObj(serviceDef: grpc.ServiceDefinition, serviceImpl
       Object.assign(serviceObj, { [method]: handler })
     } else if (methodDef.requestStream && methodDef.responseStream) {
       const handler: grpc.handleBidiStreamingCall<any, any> = function handleBidiStreamingCall(call) {
-        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call)
+        methodImpl.call(serviceImpl, call.pipe(new PassThrough()), call.metadata, call)
         .then((result: Readable) => {
           return pipelinePromise(result, call)
         })

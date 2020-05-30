@@ -30,7 +30,6 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
             getMetadata(metadata),
             callOptions || {},
             (err, result) => {
-              console.log('client on callback, hasError:', !!err)
               if (err) return reject(err)
               return resolve(result)
             },

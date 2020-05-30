@@ -7,7 +7,7 @@ import * as protoLoader from '@grpc/proto-loader'
 import * as grpc from '@grpc/grpc-js'
 import { routeGuideServiceImpl } from './route-guide.service'
 
-describe('server', () => {
+describe.skip('server', () => {
   let serviceDef: grpc.ServiceDefinition
   let packageDef: protoLoader.PackageDefinition
   let nativeClient: any
