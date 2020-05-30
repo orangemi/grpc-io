@@ -1,10 +1,10 @@
-import { promisify } from 'util'
-import { strict as assert } from 'assert'
+// import { promisify } from 'util'
+// import { strict as assert } from 'assert'
 import { Readable, PassThrough, pipeline } from 'stream'
 import * as grpc from '@grpc/grpc-js'
 import { MetadataOptions } from '@grpc/grpc-js/build/src/metadata'
 
-const pipelinePromise = promisify(pipeline)
+// const pipelinePromise = promisify(pipeline)
 
 export function getMetadata(obj: {[x: string]: string} = {}, options?: MetadataOptions) {
   const result = new grpc.Metadata(options)
@@ -30,6 +30,7 @@ export function createClient(serviceDef: grpc.ServiceDefinition, serverAddr: str
             getMetadata(metadata),
             callOptions || {},
             (err, result) => {
+              console.log('client on callback, hasError:', !!err)
               if (err) return reject(err)
               return resolve(result)
             },
