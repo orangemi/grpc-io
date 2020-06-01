@@ -45,26 +45,26 @@ export async function parseProtofile(filepath: string) {
 }
 
 export function parseNamespace(ns: protobufjs.Namespace) {
-  console.log('ns.name:', ns.name)
-  console.log('ns.fullName:', ns.fullName)
-  console.log('ns.filename :', ns.filename)
+  // console.log('ns.name:', ns.name)
+  // console.log('ns.fullName:', ns.fullName)
+  // console.log('ns.filename :', ns.filename)
   // console.log('ns.filename :', ns.filename)
   ns.nestedArray.forEach(obj => {
     // console.log('ns.obj.name', obj.name)
     if (obj instanceof protobufjs.Type) {
       // const message = obj as protobufjs.Type
-      // parseType(obj)
+      parseType(obj)
       // console.log('ns.Type.t', message)
     } else if (obj instanceof protobufjs.Service) {
       parseService(obj)
     } else {
-      console.log('ns.unknown.name', obj.name)
+      console.log('ns.unknown.type', obj.name)
     }
   })
 }
 
 export function parseService(service: protobufjs.Service) {
-  console.log('service.name', )
+  // console.log('service.name', )
   console.log(`interface ${service.name} {`)
   service.methodsArray.forEach(method => {
     let requestType = method.requestType
@@ -76,7 +76,7 @@ export function parseService(service: protobufjs.Service) {
     if (method.responseStream) {
       responseType = `Readable<${responseType}>`
     }
-    console.log(`  ${method.name}(req: ${requestType}, meta?: Metadata, call?: ${callType}): Promsie<${responseType}>`)
+    console.log(`  ${method.name}(req: ${requestType}, meta?: Metadata, call?: ${callType}): Promise<${responseType}>`)
     // console.log('method:', method.name)
     // console.log('method:', method.requestType)
     // console.log('method:', method.responseType)
